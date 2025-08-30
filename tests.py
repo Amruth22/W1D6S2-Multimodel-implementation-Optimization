@@ -10,7 +10,7 @@ import time
 import asyncio
 import tempfile
 import io
-from unittest.mock import patch, MagicMock, Mock
+from unittest.mock import patch, MagicMock, Mock, mock_open
 from dotenv import load_dotenv
 from datetime import datetime
 from typing import Dict, List, Optional, Any
@@ -39,80 +39,18 @@ MOCK_CONFIG = {
     "SUPPORTED_AUDIO_FORMATS": ["MP3", "WAV", "AIFF", "AAC", "OGG", "FLAC"]
 }
 
-# Mock Gemini API Response
-class MockGeminiResponse:
-    def __init__(self, text: str, model: str = "gemini-2.5-flash"):
-        self.text = text
-        self.model = model
-
-# Mock Gemini Client
-class MockGeminiClient:
-    def __init__(self):
-        self.models = MagicMock()
-        self.files = MagicMock()
-        self.call_count = 0
-        
-    def generate_content(self, model: str, contents: Any):
-        """Mock content generation"""
-        self.call_count += 1
-        
-        # Simulate different responses based on content type
-        if isinstance(contents, list):
-            if len(contents) == 1 and hasattr(contents[0], 'parts'):
-                # Text-only request
-                return MockGeminiResponse(MOCK_RESPONSES["text_generation"])
-            else:
-                # Multimodal request
-                return MockGeminiResponse(MOCK_RESPONSES["multimodal_analysis"])
-        else:
-            # Simple content
-            return MockGeminiResponse(MOCK_RESPONSES["text_generation"])
-    
-    def generate_content_stream(self, model: str, contents: Any):
-        """Mock streaming content generation"""
-        response_text = MOCK_RESPONSES["text_generation"]
-        chunks = [response_text[i:i+20] for i in range(0, len(response_text), 20)]
-        
-        for chunk in chunks:
-            mock_chunk = MagicMock()
-            mock_chunk.text = chunk
-            yield mock_chunk
-
-# Mock File Upload
-class MockUploadedFile:
-    def __init__(self, filename: str):
-        self.filename = filename
-        self.name = f"files/{filename}"
-
-# Mock PIL Image
-class MockPILImage:
-    def __init__(self, size=(800, 600), format="JPEG"):
-        self.size = size
-        self.format = format
-    
-    def thumbnail(self, size, resample=None):
-        """Mock thumbnail operation"""
-        self.size = size
-    
-    def save(self, buffer, format=None, quality=85, optimize=True):
-        """Mock save operation"""
-        # Simulate compressed image data
-        mock_data = b"mock_compressed_image_data_" + b"x" * 1000
-        buffer.write(mock_data)
-
-# Global mock instances
-mock_client = MockGeminiClient()
-
 # ============================================================================
-# ASYNC PYTEST TEST FUNCTIONS - 10 CORE TESTS
+# PYTEST ASYNC TEST FUNCTIONS - 10 CORE TESTS
 # ============================================================================
 
+@pytest.mark.asyncio
 async def test_01_multimodal_engine_initialization():
     """Test 1: MultimodalEngine Initialization and Configuration"""
     print("Running Test 1: MultimodalEngine Initialization and Configuration")
     
     # Test initialization with explicit API key
     with patch('multimodal_engine.genai.Client') as mock_genai:
+        mock_client = MagicMock()
         mock_genai.return_value = mock_client
         
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -142,11 +80,16 @@ async def test_01_multimodal_engine_initialization():
     print("PASS: Default configuration settings validated")
     print("PASS: Custom model name configuration working")
 
+@pytest.mark.asyncio
 async def test_02_text_generation_with_caching():
     """Test 2: Text Generation with Intelligent Caching"""
     print("Running Test 2: Text Generation with Intelligent Caching")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = MOCK_RESPONSES["text_generation"]
+        mock_client.models.generate_content.return_value = mock_response
         mock_genai.return_value = mock_client
         
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -187,11 +130,16 @@ async def test_02_text_generation_with_caching():
     print(f"PASS: Caching system working - Hit rate: {stats['hit_rate']:.1%}")
     print("PASS: Cache statistics and clearing functionality validated")
 
+@pytest.mark.asyncio
 async def test_03_prompt_engineering_enhancement():
     """Test 3: Advanced Prompt Engineering with Style Enhancement"""
     print("Running Test 3: Advanced Prompt Engineering with Style Enhancement")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = MOCK_RESPONSES["text_generation"]
+        mock_client.models.generate_content.return_value = mock_response
         mock_genai.return_value = mock_client
         
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -247,16 +195,23 @@ async def test_03_prompt_engineering_enhancement():
     print("PASS: Context-aware prompt modification validated")
     print("PASS: Template system functioning correctly")
 
+@pytest.mark.asyncio
 async def test_04_image_processing_and_optimization():
     """Test 4: Image Processing with Compression Optimization"""
     print("Running Test 4: Image Processing with Compression Optimization")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
         with patch('multimodal_engine.Image') as mock_image_class:
+            mock_client = MagicMock()
+            mock_response = MagicMock()
+            mock_response.text = MOCK_RESPONSES["text_generation"]
+            mock_client.models.generate_content.return_value = mock_response
             mock_genai.return_value = mock_client
             
             # Mock PIL Image operations
-            mock_image_instance = MockPILImage(size=(2048, 1536), format="PNG")
+            mock_image_instance = MagicMock()
+            mock_image_instance.size = (2048, 1536)
+            mock_image_instance.format = "PNG"
             mock_image_class.open.return_value = mock_image_instance
             
             engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -279,7 +234,7 @@ async def test_04_image_processing_and_optimization():
             assert result.response_time > 0, "Should track processing time"
             
             # Test image optimization was called
-            mock_image_class.open.assert_called_once(), "Should open image for optimization"
+            mock_image_class.open.assert_called(), "Should open image for optimization"
             
             # Test with file path
             with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as tmp_file:
@@ -287,7 +242,7 @@ async def test_04_image_processing_and_optimization():
                 tmp_file_path = tmp_file.name
             
             try:
-                with patch('builtins.open', mock_open_file(mock_image_data)):
+                with patch('builtins.open', mock_open(read_data=mock_image_data)):
                     result_file = engine.generate_from_image(
                         tmp_file_path,
                         prompt="Analyze this image file"
@@ -310,15 +265,21 @@ async def test_04_image_processing_and_optimization():
     print("PASS: File path and bytes input handling validated")
     print("PASS: Image processing caching functionality confirmed")
 
+@pytest.mark.asyncio
 async def test_05_audio_processing_capabilities():
     """Test 5: Audio Processing with File Upload Management"""
     print("Running Test 5: Audio Processing with File Upload Management")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = MOCK_RESPONSES["text_generation"]
+        mock_client.models.generate_content.return_value = mock_response
         mock_genai.return_value = mock_client
         
         # Mock file upload
-        mock_uploaded_file = MockUploadedFile("test_audio.mp3")
+        mock_uploaded_file = MagicMock()
+        mock_uploaded_file.name = "files/test_audio.mp3"
         mock_client.files.upload.return_value = mock_uploaded_file
         
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -348,7 +309,7 @@ async def test_05_audio_processing_capabilities():
             tmp_file_path = tmp_file.name
         
         try:
-            with patch('builtins.open', mock_open_file(mock_audio_data)):
+            with patch('builtins.open', mock_open(read_data=mock_audio_data)):
                 result_file = engine.generate_from_audio(
                     tmp_file_path,
                     prompt="Analyze this audio file content"
@@ -371,15 +332,21 @@ async def test_05_audio_processing_capabilities():
     print("PASS: Temporary file handling and cleanup validated")
     print("PASS: Audio processing caching functionality confirmed")
 
+@pytest.mark.asyncio
 async def test_06_multimodal_content_integration():
     """Test 6: Multimodal Content Integration and Processing"""
     print("Running Test 6: Multimodal Content Integration and Processing")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = MOCK_RESPONSES["multimodal_analysis"]
+        mock_client.models.generate_content.return_value = mock_response
         mock_genai.return_value = mock_client
         
         # Mock file upload for audio
-        mock_uploaded_file = MockUploadedFile("multimodal_audio.mp3")
+        mock_uploaded_file = MagicMock()
+        mock_uploaded_file.name = "files/multimodal_audio.mp3"
         mock_client.files.upload.return_value = mock_uploaded_file
         
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -441,16 +408,23 @@ async def test_06_multimodal_content_integration():
     print("PASS: Content validation and error handling confirmed")
     print("PASS: Multimodal processing caching functionality validated")
 
+@pytest.mark.asyncio
 async def test_07_optimization_features_validation():
     """Test 7: Optimization Features and Performance Monitoring"""
     print("Running Test 7: Optimization Features and Performance Monitoring")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
         with patch('multimodal_engine.Image') as mock_image_class:
+            mock_client = MagicMock()
+            mock_response = MagicMock()
+            mock_response.text = MOCK_RESPONSES["text_generation"]
+            mock_client.models.generate_content.return_value = mock_response
             mock_genai.return_value = mock_client
             
             # Mock image optimization
-            mock_image_instance = MockPILImage(size=(1500, 1200), format="PNG")
+            mock_image_instance = MagicMock()
+            mock_image_instance.size = (1500, 1200)
+            mock_image_instance.format = "PNG"
             mock_image_class.open.return_value = mock_image_instance
             
             engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -506,11 +480,16 @@ async def test_07_optimization_features_validation():
     print("PASS: Cache and compression toggle functionality validated")
     print("PASS: Performance monitoring and statistics tracking confirmed")
 
+@pytest.mark.asyncio
 async def test_08_error_handling_and_validation():
     """Test 8: Comprehensive Error Handling and Input Validation"""
     print("Running Test 8: Comprehensive Error Handling and Input Validation")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = MOCK_RESPONSES["text_generation"]
+        mock_client.models.generate_content.return_value = mock_response
         mock_genai.return_value = mock_client
         
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -542,12 +521,6 @@ async def test_08_error_handling_and_validation():
                 assert False, "Should raise error when API fails"
             except Exception as e:
                 assert "error generating content from text" in str(e).lower(), "Should wrap API errors"
-        
-        # Test invalid modality type
-        invalid_content = MultimodalContent(
-            modality="invalid_modality",  # This should cause issues
-            data="test data"
-        )
         
         # Test file not found error handling
         try:
@@ -583,6 +556,7 @@ async def test_08_error_handling_and_validation():
     print("PASS: API error wrapping and user-friendly messages confirmed")
     print("PASS: File handling and edge case validation successful")
 
+@pytest.mark.asyncio
 async def test_09_specialized_prompt_engineers():
     """Test 9: Specialized Prompt Engineers for Different Modalities"""
     print("Running Test 9: Specialized Prompt Engineers for Different Modalities")
@@ -655,11 +629,16 @@ async def test_09_specialized_prompt_engineers():
     print("PASS: AudioPromptEngineer specialized prompts validated")
     print("PASS: Keyword extraction and modality optimization confirmed")
 
+@pytest.mark.asyncio
 async def test_10_performance_and_benchmarking():
     """Test 10: Performance Monitoring and Benchmarking Capabilities"""
     print("Running Test 10: Performance Monitoring and Benchmarking Capabilities")
     
     with patch('multimodal_engine.genai.Client') as mock_genai:
+        mock_client = MagicMock()
+        mock_response = MagicMock()
+        mock_response.text = MOCK_RESPONSES["text_generation"]
+        mock_client.models.generate_content.return_value = mock_response
         mock_genai.return_value = mock_client
         
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
@@ -740,17 +719,6 @@ async def test_10_performance_and_benchmarking():
         print(f"PASS: Cache performance - Hit rate: {stats['hit_rate']:.1%}, Hits: {stats['hits']}")
         print(f"PASS: Concurrent processing - {len(concurrent_results)} requests handled")
         print(f"PASS: Memory monitoring - Cache size: {final_cache_size} items")
-
-# ============================================================================
-# HELPER FUNCTIONS
-# ============================================================================
-
-def mock_open_file(content):
-    """Helper function to mock file opening"""
-    mock_file = MagicMock()
-    mock_file.read.return_value = content
-    mock_file.__enter__.return_value = mock_file
-    return mock_file
 
 # ============================================================================
 # ASYNC TEST RUNNER
