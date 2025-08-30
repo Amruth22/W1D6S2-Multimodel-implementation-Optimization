@@ -737,8 +737,15 @@ async def test_10_performance_and_benchmarking():
         initial_cache_size = engine.get_cache_stats()["cache_size"]
         
         # Add more items to cache
-        for i in range(5):
-            engine.generate_from_text(f"Memory test prompt {i}")
+        with patch('multimodal_engine.time.time') as mock_time:
+            # Create time values for memory test requests
+            time_values = []
+            for i in range(5):
+                time_values.extend([i * 0.1, i * 0.1 + 0.05])  # Each request takes 0.05s
+            mock_time.side_effect = time_values
+            
+            for i in range(5):
+                engine.generate_from_text(f"Memory test prompt {i}")
         
         final_cache_size = engine.get_cache_stats()["cache_size"]
         assert final_cache_size > initial_cache_size, "Cache size should increase with new requests"
