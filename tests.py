@@ -98,11 +98,10 @@ async def test_02_text_generation_with_caching():
         # First request (should not be cached)
         prompt = "Explain quantum computing in simple terms"
         
-        # Add small delay to simulate processing time
-        import time
-        time.sleep(0.01)
-        
-        result1 = engine.generate_from_text(prompt)
+        # Mock time.time to simulate response time tracking
+        with patch('multimodal_engine.time.time') as mock_time:
+            mock_time.side_effect = [0.0, 0.1]  # start_time=0.0, end_time=0.1
+            result1 = engine.generate_from_text(prompt)
         
         assert result1 is not None, "Should return generation result"
         assert isinstance(result1, GenerationResult), "Should return GenerationResult object"
@@ -305,16 +304,15 @@ async def test_05_audio_processing_capabilities():
         mock_audio_data = b"mock_audio_data_mp3_format_" + b"x" * 3000
         
         # Test audio processing with bytes
-        # Add small delay to simulate processing time
-        import time
-        time.sleep(0.01)
-        
-        result = engine.generate_from_audio(
-            mock_audio_data,
-            prompt="Transcribe and summarize this audio clip",
-            style=PromptStyle.CONCISE,
-            target_audience="business professionals"
-        )
+        # Mock time.time to simulate response time tracking
+        with patch('multimodal_engine.time.time') as mock_time:
+            mock_time.side_effect = [0.0, 0.15]  # start_time=0.0, end_time=0.15
+            result = engine.generate_from_audio(
+                mock_audio_data,
+                prompt="Transcribe and summarize this audio clip",
+                style=PromptStyle.CONCISE,
+                target_audience="business professionals"
+            )
         
         assert result is not None, "Should process audio successfully"
         assert isinstance(result, GenerationResult), "Should return GenerationResult"
@@ -672,11 +670,11 @@ async def test_10_performance_and_benchmarking():
         engine = MultimodalEngine(api_key=MOCK_CONFIG["GEMINI_API_KEY"])
         
         # Test response time tracking
-        start_time = time.time()
-        # Add small delay to simulate processing time
-        time.sleep(0.01)
-        result = engine.generate_from_text("Performance test prompt")
-        end_time = time.time()
+        with patch('multimodal_engine.time.time') as mock_time:
+            mock_time.side_effect = [0.0, 0.12]  # start_time=0.0, end_time=0.12
+            start_time = time.time()
+            result = engine.generate_from_text("Performance test prompt")
+            end_time = time.time()
         
         assert result.response_time > 0, "Should track response time"
         assert result.response_time <= (end_time - start_time) + 0.1, "Response time should be reasonable"
