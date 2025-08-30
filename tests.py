@@ -734,10 +734,15 @@ async def test_10_performance_and_benchmarking():
         assert final_cache_size > initial_cache_size, "Cache size should increase with new requests"
         
         # Test performance with different modalities
-        image_result = engine.generate_from_image(
-            b"mock_image_data" + b"x" * 1000,
-            "Performance test image"
-        )
+        with patch('multimodal_engine.types') as mock_types:
+            mock_part = MagicMock()
+            mock_types.Part.from_bytes.return_value = mock_part
+            mock_types.Part.from_text.return_value = mock_part
+            
+            image_result = engine.generate_from_image(
+                b"mock_image_data" + b"x" * 1000,
+                "Performance test image"
+            )
         
         assert image_result.response_time > 0, "Image processing should track response time"
         
