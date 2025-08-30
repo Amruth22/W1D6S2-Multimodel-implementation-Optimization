@@ -884,11 +884,7 @@ def run_all_tests():
 # PYTEST INTEGRATION
 # ============================================================================
 
-@pytest.mark.asyncio
-async def test_multimodal_engine_suite():
-    """Pytest entry point for the entire test suite"""
-    success = await run_async_tests()
-    assert success, "All tests should pass"
+
 
 if __name__ == "__main__":
     print("🚀 Starting Multimodal Engine Library Tests (Robust Pytest Version)")
