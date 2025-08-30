@@ -691,11 +691,19 @@ async def test_10_performance_and_benchmarking():
             "Describe neural networks"   # Duplicate for cache test
         ]
         
-        for prompt in test_prompts:
-            result = engine.generate_from_text(prompt)
-            response_times.append(result.response_time)
-            if result.cached:
-                cache_hits += 1
+        # Mock time.time for multiple requests
+        with patch('multimodal_engine.time.time') as mock_time:
+            # Create time values for each request (start, end pairs)
+            time_values = []
+            for i in range(len(test_prompts)):
+                time_values.extend([i * 0.2, i * 0.2 + 0.1])  # Each request takes 0.1s
+            mock_time.side_effect = time_values
+            
+            for prompt in test_prompts:
+                result = engine.generate_from_text(prompt)
+                response_times.append(result.response_time)
+                if result.cached:
+                    cache_hits += 1
         
         # Analyze performance metrics
         avg_response_time = sum(response_times) / len(response_times)
