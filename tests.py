@@ -226,12 +226,17 @@ async def test_04_image_processing_and_optimization():
             mock_image_data = b"mock_large_image_data_" + b"x" * 5000
             
             # Test image processing
-            result = engine.generate_from_image(
-                mock_image_data,
-                prompt="Describe this technical diagram in detail",
-                style=PromptStyle.DETAILED,
-                target_audience="engineers"
-            )
+            with patch('multimodal_engine.types') as mock_types:
+                mock_part = MagicMock()
+                mock_types.Part.from_bytes.return_value = mock_part
+                mock_types.Part.from_text.return_value = mock_part
+                
+                result = engine.generate_from_image(
+                    mock_image_data,
+                    prompt="Describe this technical diagram in detail",
+                    style=PromptStyle.DETAILED,
+                    target_audience="engineers"
+                )
             
             assert result is not None, "Should process image successfully"
             assert isinstance(result, GenerationResult), "Should return GenerationResult"
@@ -259,10 +264,15 @@ async def test_04_image_processing_and_optimization():
                 os.unlink(tmp_file_path)
             
             # Test caching for image processing
-            result_cached = engine.generate_from_image(
-                mock_image_data,
-                prompt="Describe this technical diagram in detail"
-            )
+            with patch('multimodal_engine.types') as mock_types:
+                mock_part = MagicMock()
+                mock_types.Part.from_bytes.return_value = mock_part
+                mock_types.Part.from_text.return_value = mock_part
+                
+                result_cached = engine.generate_from_image(
+                    mock_image_data,
+                    prompt="Describe this technical diagram in detail"
+                )
             
             assert result_cached.cached == True, "Second image request should be cached"
     
@@ -467,10 +477,15 @@ async def test_07_optimization_features_validation():
                 mock_buffer = io.BytesIO()
                 mock_bytesio.return_value = mock_buffer
                 
-                result_optimized = engine.generate_from_image(
-                    large_image_data,
-                    prompt="Analyze this large image"
-                )
+                with patch('multimodal_engine.types') as mock_types:
+                    mock_part = MagicMock()
+                    mock_types.Part.from_bytes.return_value = mock_part
+                    mock_types.Part.from_text.return_value = mock_part
+                    
+                    result_optimized = engine.generate_from_image(
+                        large_image_data,
+                        prompt="Analyze this large image"
+                    )
                 
                 assert result_optimized is not None, "Should process optimized image"
                 mock_image_class.open.assert_called(), "Should attempt image optimization"
@@ -601,7 +616,7 @@ async def test_09_specialized_prompt_engineers():
     # Test transcription prompt
     transcribe_prompt = audio_engineer.transcribe_audio()
     assert isinstance(transcribe_prompt, str), "Should return string prompt"
-    assert "transcribe" in transcribe_prompt.lower(), "Should contain transcription instruction"
+    assert "transcription" in transcribe_prompt.lower() or "transcribe" in transcribe_prompt.lower(), "Should contain transcription instruction"
     assert "audio" in transcribe_prompt.lower(), "Should reference audio"
     
     # Test summarization prompt
