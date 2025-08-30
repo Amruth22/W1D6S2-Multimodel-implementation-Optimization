@@ -752,14 +752,16 @@ async def test_10_performance_and_benchmarking():
         
         # Test performance with different modalities
         with patch('multimodal_engine.types') as mock_types:
-            mock_part = MagicMock()
-            mock_types.Part.from_bytes.return_value = mock_part
-            mock_types.Part.from_text.return_value = mock_part
-            
-            image_result = engine.generate_from_image(
-                b"mock_image_data" + b"x" * 1000,
-                "Performance test image"
-            )
+            with patch('multimodal_engine.time.time') as mock_time:
+                mock_time.side_effect = [0.0, 0.2]  # Image processing takes 0.2s
+                mock_part = MagicMock()
+                mock_types.Part.from_bytes.return_value = mock_part
+                mock_types.Part.from_text.return_value = mock_part
+                
+                image_result = engine.generate_from_image(
+                    b"mock_image_data" + b"x" * 1000,
+                    "Performance test image"
+                )
         
         assert image_result.response_time > 0, "Image processing should track response time"
         
