@@ -66,9 +66,19 @@ class CoreMultimodalEngineTests(unittest.TestCase):
         self.assertEqual(custom_engine.model_name, "gemini-2.0-flash")
         
         # Test initialization without API key should raise error
-        with self.assertRaises(ValueError) as context:
-            self.MultimodalEngine(api_key=None)
-        self.assertIn("API key is required", str(context.exception))
+        # Temporarily clear environment variable to test None API key
+        original_env = os.environ.get('GEMINI_API_KEY')
+        if 'GEMINI_API_KEY' in os.environ:
+            del os.environ['GEMINI_API_KEY']
+        
+        try:
+            with self.assertRaises(ValueError) as context:
+                self.MultimodalEngine(api_key=None)
+            self.assertIn("API key is required", str(context.exception))
+        finally:
+            # Restore original environment variable
+            if original_env:
+                os.environ['GEMINI_API_KEY'] = original_env
         
         # Test cache and optimization settings
         self.assertIsInstance(self.engine._cache, dict)
@@ -280,7 +290,11 @@ class CoreMultimodalEngineTests(unittest.TestCase):
         
         # Test audio-specific prompts
         transcribe_prompt = audio_engineer.transcribe_audio()
-        self.assertIn("transcrib", transcribe_prompt.lower())
+        # Check for either 'transcrib' or 'transcription' in the prompt
+        self.assertTrue(
+            "transcrib" in transcribe_prompt.lower() or "transcription" in transcribe_prompt.lower(),
+            f"Expected transcription-related word in prompt: {transcribe_prompt}"
+        )
         
         summary_prompt = audio_engineer.summarize_audio()
         self.assertIn("summarize", summary_prompt.lower())
