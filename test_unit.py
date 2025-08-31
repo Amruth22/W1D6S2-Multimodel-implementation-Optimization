@@ -95,7 +95,7 @@ class CoreMultimodalEngineTests(unittest.TestCase):
         print("Running Test 2: Text Generation with Caching")
         
         # Test basic text generation
-        prompt = "Explain quantum computing in simple terms"
+        prompt = "Hi"
         result = self.engine.generate_from_text(prompt)
         
         # Verify result structure
